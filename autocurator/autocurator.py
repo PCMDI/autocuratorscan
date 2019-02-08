@@ -22,13 +22,11 @@ def ingestCSV(filename):
             break
     files = []
     for l in csv[i+1:]:
-        print(l)
         files.append(l.strip().split(",")[1][1:-1])
     return vars, files, csv[2:i]
 
 def createMapping(filename):
     vars, files, csv = ingestCSV(filename)
-    print("FILE ):<{}>".format(files[0]))
 
     out = {}
 
@@ -63,7 +61,6 @@ def createMapping(filename):
             map_files[-1][1][-1] = index + 1
             time_partition[-1] = index + 1
         index += 1
-    print(map_files)
     mapping = "[[" + str(times).replace("'","") + ",["
     mapping += ",".join(["[{},{},-,-,-,{}]".format(v[0],v[1],os.path.basename(files[nm])) for nm,v in map_files])
     mapping+="]],["+str(nontimes).replace("'","") +",[[-,-,-,-,-,{}]]]]".format(os.path.basename(files[map_files[0][0]]))
@@ -174,11 +171,3 @@ def csv2xml(csv_file):
 
         dataset.append(elt)
     return etree.tostring(dataset)
-
-out_file = "test.xml"
-in_file = "../charles.csv"
-with open(out_file,"w") as f:
-    print('<?xml version="1.0"?>', file=f)
-    print('<!DOCTYPE dataset SYSTEM "http://www-pcmdi.llnl.gov/software/cdms/cdml.dtd">', file=f)
-    print(csv2xml(in_file), file=f)
-

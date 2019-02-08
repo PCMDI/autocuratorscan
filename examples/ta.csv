@@ -1,0 +1,10 @@
+time,bounds_time,level,latitude,bounds_latitude,longitude,bounds_longitude,ta
+NONE,,X,X,X,X,X,
+1950-04-07 00:00:00,0:0,,,,,,0:0
+1950-04-08 00:00:00,0:1,,,,,,0:1
+1950-04-09 00:00:00,0:2,,,,,,0:2
+1950-04-10 00:00:00,0:3,,,,,,0:3
+
+
+file_ix,filename
+0,"./ta1.nc"
