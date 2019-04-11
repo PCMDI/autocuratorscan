@@ -17,7 +17,7 @@ ifeq ($(NETCDF), TRUE)
   HYPERIONCLIMATELDFLAGS+= -L$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2
 endif
 
-BUILD_TARGETS+= base
+BUILD_TARGETS+= base contrib
 CLEAN_TARGETS= $(addsuffix .clean,$(BUILD_TARGETS))
 
 HYPERIONCLIMATELIBS+= $(HYPERIONCLIMATEDIR)/src/base/libhyperionbase.a
@@ -25,9 +25,6 @@ HYPERIONCLIMATELIBS+= $(HYPERIONCLIMATEDIR)/src/base/libhyperionbase.a
 HYPERIONCLIMATELDFLAGS+= -L$(HYPERIONCLIMATEDIR)/src/base
 
 LIBRARIES+= -lhyperionbase
-ifeq ($(NETCDF), TRUE)
-  LIBRARIES+= -lnetcdf_c++
-endif
 
 EXEC_FILES= autocurator.cpp
 
