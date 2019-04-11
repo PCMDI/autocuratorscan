@@ -304,31 +304,6 @@ public:
 	~FileListObject();
 
 	///	<summary>
-	///		Self-duplicator.
-	///	</summary>
-	virtual Object * Duplicate(
-		const std::string & strDuplicateName,
-		ObjectRegistry & objreg
-	) const {
-		FileListObject * pobjDuplicate =
-			new FileListObject(strDuplicateName);
-		if (pobjDuplicate == NULL) {
-			_EXCEPTIONT("Out of memory");
-		}
-
-		_EXCEPTIONT("TO BE FIXED");
-		pobjDuplicate->m_strRecordDimName = m_strRecordDimName;
-		pobjDuplicate->m_vecFilenames = m_vecFilenames;
-		pobjDuplicate->m_vecTimes = m_vecTimes;
-		pobjDuplicate->m_vecVariableInfo = m_vecVariableInfo;
-		pobjDuplicate->m_mapDimensionInfo = m_mapDimensionInfo;
-		pobjDuplicate->m_sReduceTargetIx = m_sReduceTargetIx;
-		pobjDuplicate->m_mapOutputTimeFile = m_mapOutputTimeFile;
-
-		return _Duplicate(pobjDuplicate, objreg);
-	}
-
-	///	<summary>
 	///		Call a member function of this Object.
 	///	</summary>
 	virtual std::string Call(

@@ -10,7 +10,7 @@ HYPERIONCLIMATEDIR= ../..
 # Load Makefile framework. 
 include $(HYPERIONCLIMATEDIR)/mk/framework.make
 
-CXXFLAGS+=-I$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2/include
+CXXFLAGS+=-I$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2
 
 FILES= Announce.cpp \
 	   Exception.cpp \

@@ -1,8 +1,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///
-///	\file	recap.cpp
+///	\file    autocurator.cpp
 ///	\author  Paul Ullrich
-///	\version March 8, 2017
+///	\version January 31, 2019
 ///
 ///	<remarks>
 ///		Copyright 2016- Paul Ullrich
@@ -18,13 +18,10 @@
 #include "Announce.h"
 #include "Object.h"
 #include "FileListObject.h"
-#include "netcdfcpp.h"
-#include <iostream>
-#include <fstream>
-#include <sstream>
+
 #include <string>
-#include <vector>
-#include <stack>
+
+#include "netcdfcpp.h"
 
 #if defined(HYPERION_MPIOMP)
 #include <mpi.h>
