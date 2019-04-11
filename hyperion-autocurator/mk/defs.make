@@ -19,8 +19,8 @@ endif
 CXXFLAGS+= -I$(HYPERIONCLIMATEDIR)/src/base
 
 ifeq ($(NETCDF),TRUE)
-  CXXFLAGS+= -I$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2/include -I$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2/
-  LDFLAGS+= -L$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2/lib -L$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2/
+  CXXFLAGS+= -I$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2/
+  LDFLAGS+= -L$(HYPERIONCLIMATEDIR)/src/netcdf-cxx-4.2/
 endif
 
 ###############################################################################
@@ -55,19 +55,5 @@ ifeq ($(NETCDF),TRUE)
   LIBRARIES+= $(NETCDF_LIBRARIES)
   LDFLAGS+=   $(NETCDF_LDFLAGS)
 endif
-
-ifeq ($(LAPACK_INTERFACE),ESSL)
-  CXXFLAGS+= -DHYPERION_LAPACK_ESSL_INTERFACE
-else ifeq ($(LAPACK_INTERFACE),ACML)
-  CXXFLAGS+= -DHYPERION_LAPACK_ACML_INTERFACE
-else ifeq ($(LAPACK_INTERFACE),FORTRAN)
-  CXXFLAGS+= -DHYPERION_LAPACK_FORTRAN_INTERFACE
-else
-  $(error mk/system/$(SYSTEM_MAKEFILE) does not properly define LAPACK_INTERFACE)
-endif
-  
-CXXFLAGS+=  $(LAPACK_CXXFLAGS)
-LIBRARIES+= $(LAPACK_LIBRARIES)
-LDFLAGS+=   $(LAPACK_LDFLAGS)
 
 # DO NOT DELETE

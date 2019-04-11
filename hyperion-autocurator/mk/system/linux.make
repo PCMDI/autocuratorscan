@@ -4,13 +4,13 @@
 # Distributed under the Boost Software License, Version 1.0. (See accompanying 
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-# Mac OS X (Paul's Laptop)
+# Linux system
 
-CXX=               g++
-MPICXX=            mpic++
+CXX=               CC
+MPICXX=            mpiCC
 
 # NetCDF
-NETCDF_ROOT=       /opt/local
+NETCDF_ROOT=       
 NETCDF_CXXFLAGS=   -I$(NETCDF_ROOT)/include
 NETCDF_LIBRARIES=  -lnetcdf -lnetcdf_c++
 NETCDF_LDFLAGS=    -L$(NETCDF_ROOT)/lib

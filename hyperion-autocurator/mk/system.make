@@ -12,37 +12,9 @@ ifeq ($(UNAME),Darwin)
   SYSTEM= MACOSX
   SYSTEM_MAKEFILE= macosx.make
 else ifeq ($(UNAME),Linux)
-  ifeq ($(NERSC_HOST),babbage)
-    SYSTEM= BABBAGE
-    SYSTEM_MAKEFILE= babbage.make
-  endif
   ifeq ($(NERSC_HOST),cori)
     SYSTEM= CORI
     SYSTEM_MAKEFILE= cori.make
-  endif
-  ifeq ($(HOSTNAME),yslogin1)
-    SYSTEM= YELLOWSTONE
-    SYSTEM_MAKEFILE= yellowstone.make
-  endif
-  ifeq ($(HOSTNAME),yslogin2)
-    SYSTEM= YELLOWSTONE
-    SYSTEM_MAKEFILE= yellowstone.make
-  endif
-  ifeq ($(HOSTNAME),yslogin3)
-    SYSTEM= YELLOWSTONE
-    SYSTEM_MAKEFILE= yellowstone.make
-  endif
-  ifeq ($(HOSTNAME),yslogin4)
-    SYSTEM= YELLOWSTONE
-    SYSTEM_MAKEFILE= yellowstone.make
-  endif
-  ifeq ($(HOSTNAME),yslogin5)
-    SYSTEM= YELLOWSTONE
-    SYSTEM_MAKEFILE= yellowstone.make
-  endif
-  ifeq ($(HOSTNAME),yslogin6)
-    SYSTEM= YELLOWSTONE
-    SYSTEM_MAKEFILE= yellowstone.make
   endif
   ifeq ($(HOSTNAME),cheyenne1)
     SYSTEM= CHEYENNE
@@ -69,8 +41,8 @@ else ifeq ($(UNAME),Linux)
     SYSTEM_MAKEFILE= cheyenne.make
   endif
   ifeq ($(SYSTEM),)
-    SYSTEM= AGRI
-    SYSTEM_MAKEFILE= agri.make
+    SYSTEM= LINUX
+    SYSTEM_MAKEFILE= linux.make
   endif   
 endif
 
