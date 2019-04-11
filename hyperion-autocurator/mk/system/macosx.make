@@ -12,7 +12,7 @@ MPICXX=            mpic++
 # NetCDF
 NETCDF_ROOT=       /opt/local
 NETCDF_CXXFLAGS=   -I$(NETCDF_ROOT)/include
-NETCDF_LIBRARIES=  -lnetcdf -lnetcdf_c++
+NETCDF_LIBRARIES=  -lnetcdf_c++ -lnetcdf
 NETCDF_LDFLAGS=    -L$(NETCDF_ROOT)/lib
 
 # DO NOT DELETE
