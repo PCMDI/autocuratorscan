@@ -872,8 +872,22 @@ void Time::FromCFCompliantUnitsOffsetDouble(
 	const std::string & strFormattedTime,
 	double dOffset
 ) {
+	// Time format is "months since ..."
+	if ((strFormattedTime.length() >= 13) &&
+	    (strncmp(strFormattedTime.c_str(), "months since ", 13) == 0)
+	) {
+		std::string strSubStr = strFormattedTime.substr(13);
+		FromFormattedString(strSubStr);
+
+		int nMonths = static_cast<int>(dOffset);
+		AddMonths(nMonths);
+
+		if (fmod(dOffset, 1.0) > 1.0e-14) {
+			_EXCEPTIONT("Only integer values accepted for time in format \"months since ...\"");
+		}
+
 	// Time format is "days since ..."
-	if ((strFormattedTime.length() >= 11) &&
+	} else if ((strFormattedTime.length() >= 11) &&
 	    (strncmp(strFormattedTime.c_str(), "days since ", 11) == 0)
 	) {
 		std::string strSubStr = strFormattedTime.substr(11);

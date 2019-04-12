@@ -86,6 +86,24 @@ std::string NcTypeToString(
 		case ncDouble:
 			return std::string("Double");
 
+		case ncUByte:
+			return std::string("UByte");
+
+		case ncUShort:
+			return std::string("UShort");
+
+		case ncUInt:
+			return std::string("UInt");
+
+		case ncInt64:
+			return std::string("Int64");
+
+		case ncUInt64:
+			return std::string("UInt64");
+		
+		case ncString:
+			return std::string("String");
+
 		default:
 			_EXCEPTIONT("Invalid NcType");
 	};

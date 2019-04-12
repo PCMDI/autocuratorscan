@@ -1006,7 +1006,7 @@ std::string FileListObject::WriteData_float(
 				m_mapDimensionInfo.find(varinfo.m_vecDimNames[d]);
 
 			// Create a dimension variable in output file
-			if (iterDimInfo->second.m_dValues.size() != 0) {
+			if (iterDimInfo->second.m_dValuesDouble.size() != 0) {
 				NcVar * varDim =
 					ncout.add_var(
 						varinfo.m_vecDimNames[d].c_str(),
@@ -1018,8 +1018,8 @@ std::string FileListObject::WriteData_float(
 				}
 				varDim->set_cur((long)0);
 				varDim->put(
-					&(iterDimInfo->second.m_dValues[0]),
-					iterDimInfo->second.m_dValues.size());
+					&(iterDimInfo->second.m_dValuesDouble[0]),
+					iterDimInfo->second.m_dValuesDouble.size());
 
 				if (iterDimInfo->second.m_strUnits != "") {
 					varDim->add_att("units",
@@ -1483,7 +1483,7 @@ std::string FileListObject::AddVerticalDimension(
 	DimensionInfo diminfo(strDimName);
 	diminfo.m_eType = DimensionInfo::Type_Vertical;
 	diminfo.m_lSize = dDimValues.size();
-	diminfo.m_dValues = dDimValues;
+	diminfo.m_dValuesDouble = dDimValues;
 	diminfo.m_strUnits = strDimUnits;
 
 	// Determine order of target vertical dimension and verify monotonicity
@@ -1642,9 +1642,7 @@ std::string FileListObject::IndexVariableData(
 
 		// Load in global attributes
 		strError = m_datainfo.FromNcFile(&ncFile, fAppendIndex, strFullFilename);
-		if (strError != "") {
-			return strError;
-		}
+		if (strError != "") return strError;
 
 		// time indices stored in this file
 		std::vector<size_t> vecFileTimeIndices;
@@ -1775,10 +1773,13 @@ std::string FileListObject::IndexVariableData(
 
 			DimensionInfo & diminfo = *(m_vecDimensionInfo[sDimIndex]);
 
+			// Store size
+			if (fNewDimension) {
+				diminfo.m_lSize = dim->size();
+			}
+
 			// Check for variable
 			NcVar * varDim = ncFile.get_var(strDimName.c_str());
-
-			// Load values
 			if (varDim != NULL) {
 				if (varDim->num_dims() != 1) {
 					return std::string("ERROR: Dimension variable \"")
@@ -1794,13 +1795,22 @@ std::string FileListObject::IndexVariableData(
 				}
 
 				// Initialize the DataObjectInfo from the NcVar
-				diminfo.FromNcVar(varDim, !fNewDimension);
+				strError = diminfo.FromNcVar(varDim, !fNewDimension);
+				if (strError != "") return strError;
 
 				// Get the values from the dimension
 				if (fNewDimension) {
-					diminfo.m_dValues.resize(diminfo.m_lSize);
-					varDim->set_cur((long)0);
-					varDim->get(&(diminfo.m_dValues[0]), diminfo.m_lSize);
+					if (diminfo.m_nctype == ncDouble) {
+						diminfo.m_dValuesDouble.resize(diminfo.m_lSize);
+						varDim->set_cur((long)0);
+						varDim->get(&(diminfo.m_dValuesDouble[0]), diminfo.m_lSize);
+					} else if (diminfo.m_nctype == ncFloat) {
+						diminfo.m_dValuesFloat.resize(diminfo.m_lSize);
+						varDim->set_cur((long)0);
+						varDim->get(&(diminfo.m_dValuesFloat[0]), diminfo.m_lSize);
+					} else {
+						_EXCEPTIONT("Unsupported dimension nctype");
+					}
 				}
 /*
 				// Dimension is of type vertical
@@ -1923,7 +1933,8 @@ std::string FileListObject::IndexVariableData(
 			VariableInfo & info = *(m_vecVariableInfo[sVarIndex]);
 
 			// Initialize the DataObjectInfo from the NcVar
-			info.FromNcVar(var, !fNewVariable);
+			strError = info.FromNcVar(var, !fNewVariable);
+			if (strError != "") return strError;
 
 			// Load dimension information
 			const int nDims = var->num_dims();
@@ -2209,20 +2220,43 @@ std::string FileListObject::OutputTimeVariableIndexXML(
 			pdim->InsertEndChild(pattr);
 		}
 
-		if (pdiminfo->m_dValues.size() != 0) {
-			//tinyxml2::XMLElement * ptopo = xmlDoc.NewElement("attr");
-			//ptopo->SetAttribute("datatype", "String");
-			//ptopo->SetAttribute("name", "realtopology");
+		bool fHasValues = false;
+		if ((pdiminfo->m_nctype == ncDouble) && (pdiminfo->m_dValuesDouble.size() != 0)) {
+			fHasValues = true;
+		}
+		if ((pdiminfo->m_nctype == ncFloat) && (pdiminfo->m_dValuesFloat.size() != 0)) {
+			fHasValues = true;
+		}
+
+		//std::cout << pdiminfo->m_strName << " " << pdiminfo->m_dValuesFloat.size() << std::endl;
+		if (fHasValues) {
 			std::ostringstream ssText;
-			ssText << std::setprecision(17);
-			ssText << "[";
-			for (int i = 0; i < pdiminfo->m_dValues.size(); i++) {
-				ssText << pdiminfo->m_dValues[i];
-				if (i != pdiminfo->m_dValues.size()-1) {
-					ssText << " ";
+
+			// Double type
+			if (pdiminfo->m_nctype == ncDouble) {
+				ssText << std::setprecision(17);
+				ssText << "[";
+				for (int i = 0; i < pdiminfo->m_dValuesDouble.size(); i++) {
+					ssText << pdiminfo->m_dValuesDouble[i];
+					if (i != pdiminfo->m_dValuesDouble.size()-1) {
+						ssText << " ";
+					}
 				}
-			}
-			ssText << "]";
+				ssText << "]";
+
+			// Float type
+			} else if (pdiminfo->m_nctype == ncFloat) {
+				ssText << std::setprecision(8);
+				ssText << "[";
+				for (int i = 0; i < pdiminfo->m_dValuesFloat.size(); i++) {
+					ssText << pdiminfo->m_dValuesFloat[i];
+					if (i != pdiminfo->m_dValuesFloat.size()-1) {
+						ssText << " ";
+					}
+				}
+				ssText << "]";
+			} 
+
 			pdim->SetText(ssText.str().c_str());
 		}
 

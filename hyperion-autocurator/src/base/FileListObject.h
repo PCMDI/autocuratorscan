@@ -251,7 +251,8 @@ public:
 			(m_eType == diminfo.m_eType) &&
 			(m_lSize == diminfo.m_lSize) &&
 			(m_nOrder == diminfo.m_nOrder) &&
-			(m_dValues == diminfo.m_dValues));
+			(m_dValuesFloat == diminfo.m_dValuesFloat) &&
+			(m_dValuesDouble == diminfo.m_dValuesDouble));
 	}
 
 	///	<summary>
@@ -273,12 +274,23 @@ public:
 		str += m_strUnits + "\n";
 		str += "[";
 
-		for (int i = 0; i < m_dValues.size(); i++) {
-			str += std::to_string(m_dValues[i]);
-			if (i != m_dValues.size()-1) {
-				str += ", ";
+		if (m_nctype == ncDouble) {
+			for (int i = 0; i < m_dValuesDouble.size(); i++) {
+				str += std::to_string(m_dValuesDouble[i]);
+				if (i != m_dValuesDouble.size()-1) {
+					str += ", ";
+				}
+			}
+
+		} else if (m_nctype == ncFloat) {
+			for (int i = 0; i < m_dValuesFloat.size(); i++) {
+				str += std::to_string(m_dValuesFloat[i]);
+				if (i != m_dValuesFloat.size()-1) {
+					str += ", ";
+				}
 			}
 		}
+
 		str += "]";
 
 		return str;
@@ -301,9 +313,14 @@ public:
 	int m_nOrder;
 
 	///	<summary>
-	///		Dimension values
+	///		Dimension values as floats.
 	///	</summary>
-	std::vector<double> m_dValues;
+	std::vector<float> m_dValuesFloat;
+
+	///	<summary>
+	///		Dimension values as doubles.
+	///	</summary>
+	std::vector<double> m_dValuesDouble;
 };
 
 ///	<summary>
