@@ -6,11 +6,11 @@
 
 # Mac OS X (Paul's Laptop)
 
-CXX=               g++
+CXX=               clang++
 MPICXX=            mpic++
 
 # NetCDF
-NETCDF_ROOT=       /opt/local
+NETCDF_ROOT=       $(CONDA_PREFIX)
 NETCDF_CXXFLAGS=   -I$(NETCDF_ROOT)/include
 NETCDF_LIBRARIES=  -lnetcdf_c++ -lnetcdf
 NETCDF_LDFLAGS=    -L$(NETCDF_ROOT)/lib
