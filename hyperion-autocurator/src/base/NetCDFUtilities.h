@@ -17,10 +17,8 @@
 #ifndef _NETCDFUTILITIES_H_
 #define _NETCDFUTILITIES_H_
 
-class NcFile;
-class NcVar;
-
 #include <string>
+#include "netcdfcpp.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -29,6 +27,15 @@ class NcVar;
 ///	</summary>
 bool IsValidNetCDFVariableName(
 	const std::string & strVariableName
+);
+
+////////////////////////////////////////////////////////////////////////////////
+
+///	<summary>
+///		Get a string representation of the given NcType.
+///	</summary>
+std::string NcTypeToString(
+	NcType nctype
 );
 
 ////////////////////////////////////////////////////////////////////////////////

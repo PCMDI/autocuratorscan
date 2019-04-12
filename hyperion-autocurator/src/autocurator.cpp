@@ -67,10 +67,15 @@ try {
 	AnnounceStartBlock("Populating FileListObject");
 	objFileList.PopulateFromSearchString(strFilePath);
 	AnnounceEndBlock("Done");
-
+/*
 	// Output to CSV file
 	AnnounceStartBlock("Output to CSV file");
 	objFileList.OutputTimeVariableIndexCSV(strOutputFile);
+	AnnounceEndBlock("Done");
+*/
+	// Output to XML file
+	AnnounceStartBlock("Output to XML file");
+	objFileList.OutputTimeVariableIndexXML(strOutputFile);
 	AnnounceEndBlock("Done");
 
 } catch(Exception & e) {

@@ -22,6 +22,7 @@
 #include "TimeObj.h"
 #include "DataArray1D.h"
 #include "GlobalFunction.h"
+#include "netcdfcpp.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -58,6 +59,7 @@ public:
 		const std::string & strVariableName
 	) :
 		m_strVariableName(strVariableName),
+		m_nctype(ncNoType),
 		m_iTimeDimIx(-1),
 		m_iVerticalDimIx(-1),
 		m_nVerticalDimOrder(+1)
@@ -68,6 +70,11 @@ public:
 	///		Variable name.
 	///	</summary>
 	std::string m_strVariableName;
+
+	///	<summary>
+	///		NcType for the Variable.
+	///	</summary>
+	NcType m_nctype;
 
 	///	<summary>
 	///		Units for the Variable.
@@ -557,6 +564,21 @@ public:
 	std::string OutputTimeVariableIndexCSV(
 		const std::string & strCSVOutput
 	);
+
+	///	<summary>
+	///		Output the time-variable index as a XML.
+	///	</summary>
+	std::string OutputTimeVariableIndexXML(
+		const std::string & strXMLOutput
+	);
+
+	///	<summary>
+	///		Output the time-variable index as a JSON.
+	///	</summary>
+	std::string OutputTimeVariableIndexJSON(
+		const std::string & strJSONOutput
+	);
+
 
 protected:
 	///	<summary>

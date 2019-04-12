@@ -16,10 +16,11 @@
 
 #include "FileListObject.h"
 #include "STLStringHelper.h"
-//#include "Variable.h"
 #include "DataArray1D.h"
 #include "DataArray2D.h"
 #include "netcdfcpp.h"
+#include "NetCDFUtilities.h"
+#include "../contrib/tinyxml2.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -1679,6 +1680,9 @@ std::string FileListObject::IndexVariableData(
 
 			//printf("Variable %s\n", strVariableName.c_str());
 
+			// New variable, not yet indexed
+			bool fNewVariable = false;
+
 			// Find the corresponding VariableInfo structure
 			size_t sVarIndex = 0;
 			for (; sVarIndex < m_vecVariableInfo.size(); sVarIndex++) {
@@ -1689,6 +1693,8 @@ std::string FileListObject::IndexVariableData(
 			if (sVarIndex == m_vecVariableInfo.size()) {
 				m_vecVariableInfo.push_back(
 					new VariableInfo(strVariableName));
+
+				fNewVariable = true;
 			}
 
 			VariableInfo & info = *(m_vecVariableInfo[sVarIndex]);
@@ -1706,6 +1712,16 @@ std::string FileListObject::IndexVariableData(
 						info.m_strUnits = strUnits;
 					}
 				}
+			}
+
+			// Get type, if available
+			NcType nctype = var->type();
+			if ((!fNewVariable) && (nctype != info.m_nctype)) {
+				return std::string("ERROR: Variable \"") + strVariableName
+					+ std::string("\" has inconsistent type across files");
+			}
+			if (fNewVariable) {
+				info.m_nctype = nctype;
 			}
 
 			// Load dimension information
@@ -1922,6 +1938,74 @@ std::string FileListObject::OutputTimeVariableIndexCSV(
 	}
 
 	return ("");
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+std::string FileListObject::OutputTimeVariableIndexXML(
+	const std::string & strXMLOutputFilename
+) {
+	using namespace tinyxml2;
+	/*
+	XMLDocument xmlDoc;
+	XMLError eResult = xmlDoc.LoadFile("charles.xml");
+	*/
+	tinyxml2::XMLDocument xmlDoc;
+
+	// Declaration
+	xmlDoc.InsertEndChild(
+		xmlDoc.NewDeclaration(
+			"xml version=\"1.0\" encoding=\"\""));
+
+	// DOCTYPE
+	tinyxml2::XMLElement * pdoctype = xmlDoc.NewElement("!DOCTYPE");
+	pdoctype->SetAttribute("dataset", "");
+	xmlDoc.InsertEndChild(pdoctype);
+
+	// Dataset 
+	tinyxml2::XMLNode * pdata = xmlDoc.NewElement("dataset");
+	xmlDoc.InsertEndChild(pdata);
+
+	// Output dimensions
+	DimensionInfoMap::const_iterator iter = m_mapDimensionInfo.begin();
+	for (; iter != m_mapDimensionInfo.end(); iter++) {
+		tinyxml2::XMLElement * pdim = xmlDoc.NewElement("axis");
+		pdim->SetAttribute("id", iter->second.m_strName.c_str());
+		pdim->SetAttribute("units", iter->second.m_strUnits.c_str());
+		pdim->SetAttribute("length", (int64_t)iter->second.m_lSize);
+		pdata->InsertEndChild(pdim);
+	}
+
+	// Output variables
+	for (int v = 0; v < m_vecVariableInfo.size(); v++) {
+		tinyxml2::XMLElement * pvar = xmlDoc.NewElement("variable");
+		pvar->SetAttribute("id", m_vecVariableInfo[v]->m_strVariableName.c_str());
+		pvar->SetAttribute("datatype", NcTypeToString(m_vecVariableInfo[v]->m_nctype).c_str());
+		pvar->SetAttribute("units", m_vecVariableInfo[v]->m_strUnits.c_str());
+
+		tinyxml2::XMLElement * pvardom = xmlDoc.NewElement("domain");
+		pvar->InsertEndChild(pvardom);
+
+		for (int d = 0; d < m_vecVariableInfo[v]->m_vecDimNames.size(); d++) {
+			tinyxml2::XMLElement * pvardomelem = xmlDoc.NewElement("domElem");
+			pvardomelem->SetAttribute("name", m_vecVariableInfo[v]->m_vecDimNames[d].c_str());
+			pvardom->InsertEndChild(pvardomelem);
+		}
+
+		pdata->InsertEndChild(pvar);
+	}
+
+	xmlDoc.SaveFile(strXMLOutputFilename.c_str());
+
+	return std::string("");
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+std::string FileListObject::OutputTimeVariableIndexJSON(
+	const std::string & strJSONOutputFilename
+) {
+	return std::string("");
 }
 
 ///////////////////////////////////////////////////////////////////////////////

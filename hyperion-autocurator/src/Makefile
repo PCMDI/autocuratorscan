@@ -22,9 +22,9 @@ CLEAN_TARGETS= $(addsuffix .clean,$(BUILD_TARGETS))
 
 HYPERIONCLIMATELIBS+= $(HYPERIONCLIMATEDIR)/src/base/libhyperionbase.a
 
-HYPERIONCLIMATELDFLAGS+= -L$(HYPERIONCLIMATEDIR)/src/base
+HYPERIONCLIMATELDFLAGS+= -L$(HYPERIONCLIMATEDIR)/src/base -L$(HYPERIONCLIMATEDIR)/src/contrib
 
-LIBRARIES+= -lhyperionbase
+LIBRARIES+= -lhyperionbase -lhyperioncontrib
 
 EXEC_FILES= autocurator.cpp
 
