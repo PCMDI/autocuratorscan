@@ -61,6 +61,38 @@ bool IsValidNetCDFVariableName(
 
 ////////////////////////////////////////////////////////////////////////////////
 
+std::string NcTypeToString(
+	NcType nctype
+) {
+	switch(nctype) {
+		case ncNoType:
+			return std::string("Unspecified");
+
+		case ncByte:
+			return std::string("Byte");
+
+		case ncChar:
+			return std::string("Char");
+
+		case ncShort:
+			return std::string("Short");
+
+		case ncInt:
+			return std::string("Int");
+
+		case ncFloat:
+			return std::string("Float");
+
+		case ncDouble:
+			return std::string("Double");
+
+		default:
+			_EXCEPTIONT("Invalid NcType");
+	};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void CopyNcFileAttributes(
 	NcFile * fileIn,
 	NcFile * fileOut
