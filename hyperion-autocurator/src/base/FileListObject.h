@@ -44,32 +44,79 @@ typedef std::pair<size_t, int> LocalFileTimePair;
 ///	</summary>
 typedef std::map<size_t, LocalFileTimePair> VariableTimeFileMap;
 
+///	<summary>
+///		A map from attribute names to values.
+///	</summary>
+typedef std::map<std::string, std::string> AttributeMap;
+
 ///////////////////////////////////////////////////////////////////////////////
 
 ///	<summary>
-///		A class that describes primitive variable information from a FileList.
+///		A class for storing metadata about a data object from a FileList.
 ///	</summary>
-class VariableInfo {
+class DataObjectInfo {
 
 public:
+	///	<summary>
+	///		Default constructor.
+	///	</summary>
+	DataObjectInfo() :
+		m_nctype(ncNoType)
+	{ }
+
 	///	<summary>
 	///		Constructor.
 	///	</summary>
-	VariableInfo(
-		const std::string & strVariableName
+	DataObjectInfo(
+		const std::string & strName
 	) :
-		m_strVariableName(strVariableName),
-		m_nctype(ncNoType),
-		m_iTimeDimIx(-1),
-		m_iVerticalDimIx(-1),
-		m_nVerticalDimOrder(+1)
-	{ } 
+		m_strName(strName),
+		m_nctype(ncNoType)
+	{ }
 
 public:
 	///	<summary>
-	///		Variable name.
+	///		Populate from a NcFile.
 	///	</summary>
-	std::string m_strVariableName;
+	std::string FromNcFile(
+		NcFile * ncfile,
+		bool fCheckConsistency,
+		const std::string & strFilename
+	);
+
+	///	<summary>
+	///		Populate from a NcVar.
+	///	</summary>
+	std::string FromNcVar(
+		NcVar * var,
+		bool fCheckConsistency
+	);
+
+public:
+	///	<summary>
+	///		Equality operator.
+	///	</summary>
+	bool operator== (const DataObjectInfo & info) const {
+		return (
+			(m_strName == info.m_strName) &&
+			(m_nctype == info.m_nctype) &&
+			(m_strUnits == info.m_strUnits) &&
+			(m_mapKeyAttributes == info.m_mapKeyAttributes) &&
+			(m_mapOtherAttributes == info.m_mapOtherAttributes));
+	}
+
+	///	<summary>
+	///		Inequality operator.
+	///	</summary>
+	bool operator!= (const DataObjectInfo & info) const {
+		return !((*this) == info);
+	}
+
+public:
+	///	<summary>
+	///		Data object name.
+	///	</summary>
+	std::string m_strName;
 
 	///	<summary>
 	///		NcType for the Variable.
@@ -81,6 +128,39 @@ public:
 	///	</summary>
 	std::string m_strUnits;
 
+	///	<summary>
+	///		Key attributes for this Variable.
+	///	</summary>
+	AttributeMap m_mapKeyAttributes;
+
+	///	<summary>
+	///		Other attributes for this Variable.
+	///	</summary>
+	AttributeMap m_mapOtherAttributes;
+
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
+///	<summary>
+///		A class that describes primitive variable information from a FileList.
+///	</summary>
+class VariableInfo : public DataObjectInfo {
+
+public:
+	///	<summary>
+	///		Constructor.
+	///	</summary>
+	VariableInfo(
+		const std::string & strName
+	) :
+		DataObjectInfo(strName),
+		m_iTimeDimIx(-1),
+		m_iVerticalDimIx(-1),
+		m_nVerticalDimOrder(+1)
+	{ } 
+
+public:
 	///	<summary>
 	///		Index of time dimension or (-1) if time dimension doesn't exist.
 	///	</summary>
@@ -127,7 +207,7 @@ public:
 ///	<summary>
 ///		A class that describes dimension information from a FileList.
 ///	</summary>
-class DimensionInfo {
+class DimensionInfo : public DataObjectInfo {
 
 public:
 	enum Type {
@@ -143,6 +223,7 @@ public:
 	///		Constructor.
 	///	</summary>
 	DimensionInfo() :
+		DataObjectInfo(""),
 		m_lSize(0),
 		m_nOrder(0),
 		m_eType(Type_Unknown)
@@ -154,7 +235,7 @@ public:
 	DimensionInfo(
 		const std::string & strName
 	) :
-		m_strName(strName),
+		DataObjectInfo(strName),
 		m_lSize(0),
 		m_nOrder(0),
 		m_eType(Type_Unknown)
@@ -166,12 +247,11 @@ public:
 	///	</summary>
 	bool operator== (const DimensionInfo & diminfo) const {
 		return (
-			(m_strName == diminfo.m_strName) &&
+			((DataObjectInfo &)(*this) == (DataObjectInfo &)(diminfo)) &&
 			(m_eType == diminfo.m_eType) &&
 			(m_lSize == diminfo.m_lSize) &&
 			(m_nOrder == diminfo.m_nOrder) &&
-			(m_dValues == diminfo.m_dValues) &&
-			(m_strUnits == diminfo.m_strUnits));
+			(m_dValues == diminfo.m_dValues));
 	}
 
 	///	<summary>
@@ -206,11 +286,6 @@ public:
 
 public:
 	///	<summary>
-	///		Dimension name.
-	///	</summary>
-	std::string m_strName;
-
-	///	<summary>
 	///		Dimension type.
 	///	</summary>
 	Type m_eType;
@@ -229,11 +304,6 @@ public:
 	///		Dimension values
 	///	</summary>
 	std::vector<double> m_dValues;
-
-	///	<summary>
-	///		Dimension units.
-	///	</summary>
-	std::string m_strUnits;
 };
 
 ///	<summary>
@@ -355,7 +425,7 @@ public:
 		const std::string & strVariableName
 	) const {
 		for (size_t i = 0; i < m_vecVariableInfo.size(); i++) {
-			if (m_vecVariableInfo[i]->m_strVariableName == strVariableName) {
+			if (m_vecVariableInfo[i]->m_strName == strVariableName) {
 				return (m_vecVariableInfo[i]);
 			}
 		}
@@ -579,12 +649,16 @@ public:
 		const std::string & strJSONOutput
 	);
 
-
 protected:
 	///	<summary>
 	///		Pointer to the associated RecapConfigObject.
 	///	</summary>
 	RecapConfigObject * m_pobjRecapConfig;
+
+	///	<summary>
+	///		The DataObjectInfo describing this global dataset.
+	///	</summary>
+	DataObjectInfo m_datainfo;
 
 	///	<summary>
 	///		The name of the record dimension (default "time")
@@ -621,6 +695,11 @@ protected:
 	///		Information on variables that appear in the FileList.
 	///	</summary>
 	std::vector<VariableInfo *> m_vecVariableInfo;
+
+	///	<summary>
+	///		Information on variables that appear in the FileList.
+	///	</summary>
+	std::vector<DimensionInfo *> m_vecDimensionInfo;
 
 	///	<summary>
 	///		A set containing dimension information for this FileList.

@@ -64,17 +64,21 @@ try {
 	AnnounceEndBlock("Done");
 
 	// Populate from search string
-	AnnounceStartBlock("Populating FileListObject");
-	objFileList.PopulateFromSearchString(strFilePath);
+	AnnounceStartBlock("Populating FileListObject\n");
+	std::string strError = objFileList.PopulateFromSearchString(strFilePath);
+	if (strError != "") {
+		std::cout << strError << std::endl;
+		return (-1);
+	}
 	AnnounceEndBlock("Done");
 /*
 	// Output to CSV file
-	AnnounceStartBlock("Output to CSV file");
+	AnnounceStartBlock("Output to CSV file\n");
 	objFileList.OutputTimeVariableIndexCSV(strOutputFile);
 	AnnounceEndBlock("Done");
 */
 	// Output to XML file
-	AnnounceStartBlock("Output to XML file");
+	AnnounceStartBlock("Output to XML file\n");
 	objFileList.OutputTimeVariableIndexXML(strOutputFile);
 	AnnounceEndBlock("Done");
 

@@ -26,10 +26,177 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <fstream>
+#include <iomanip>
 
 #if defined(HYPERION_MPIOMP)
 #include <mpi.h>
 #endif
+
+///////////////////////////////////////////////////////////////////////////////
+// DataObjectInfo
+///////////////////////////////////////////////////////////////////////////////
+
+std::string DataObjectInfo::FromNcFile(
+	NcFile * ncfile,
+	bool fCheckConsistency,
+	const std::string & strFilename
+) {
+	// Get attributes, if available
+	for (int a = 0; a < ncfile->num_atts(); a++) {
+		NcAtt * att = ncfile->get_att(a);
+		std::string strAttName = att->name();
+		if (strAttName == "units") {
+			continue;
+		}
+
+		// Define new value of this attribute
+		if (!fCheckConsistency) {
+			std::string strAttNameTemp = strAttName;
+			STLStringHelper::ToLower(strAttNameTemp);
+
+			if ((strAttNameTemp == "conventions") ||
+			    (strAttNameTemp == "version") ||
+			    (strAttNameTemp == "history")
+			) {
+				m_mapKeyAttributes.insert(
+					AttributeMap::value_type(
+						strAttName, att->as_string(0)));
+			} else {
+				m_mapOtherAttributes.insert(
+					AttributeMap::value_type(
+						strAttName, att->as_string(0)));
+			}
+
+		// Check for consistency across files
+		} else {
+			AttributeMap::const_iterator iterAttKey =
+				m_mapKeyAttributes.find(strAttName);
+			AttributeMap::const_iterator iterAttOther =
+				m_mapOtherAttributes.find(strAttName);
+
+			if (iterAttKey != m_mapKeyAttributes.end()) {
+				if (iterAttKey->second != att->as_string(0)) {
+					return std::string("ERROR: NetCDF file \"") + strFilename
+						+ std::string("\" has inconsistent value of \"")
+						+ strAttName + std::string("\" across files");
+				}
+			}
+			if (iterAttOther != m_mapOtherAttributes.end()) {
+				if (iterAttOther->second != att->as_string(0)) {
+					return std::string("ERROR: NetCDF file \"") + strFilename
+						+ std::string("\" has inconsistent value of \"")
+						+ strAttName + std::string("\" across files");
+				}
+			}
+			if ((iterAttKey == m_mapKeyAttributes.end()) &&
+			    (iterAttOther == m_mapOtherAttributes.end())
+			) {
+				return std::string("ERROR: NetCDF file \"") + strFilename
+					+ std::string("\" has inconsistent appearance of attribute \"")
+					+ strAttName + std::string("\" across files");
+			}
+		}
+	}
+
+	return std::string("");
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+std::string DataObjectInfo::FromNcVar(
+	NcVar * var,
+	bool fCheckConsistency
+) {
+	// Get name, if available
+	std::string strName = var->name();
+	if (!fCheckConsistency) {
+		m_strName = strName;
+	} else if (strName != m_strName) {
+		_EXCEPTION2("Calling DataObjectInfo::FromNcVar with mismatched "
+			"variable names: \"%s\" \"%s\"",
+			strName.c_str(), m_strName.c_str());
+	}
+
+	// Get type, if available
+	NcType nctype = var->type();
+	if (!fCheckConsistency) {
+		m_nctype = nctype;
+	} else if (nctype != m_nctype) {
+		return std::string("ERROR: Variable \"") + strName
+			+ std::string("\" has inconsistent type across files");
+	}
+
+	// Get units, if available
+	std::string strUnits;
+	NcAtt * attUnits = var->get_att("units");
+	if (attUnits != NULL) {
+		strUnits = attUnits->as_string(0);
+	}
+	if (!fCheckConsistency) {
+		m_strUnits = strUnits;
+	} else if (strUnits != m_strUnits) {
+		return std::string("ERROR: Variable \"") + strName
+			+ std::string("\" has inconsistent units across files");
+	}
+
+	// Get attributes, if available
+	for (int a = 0; a < var->num_atts(); a++) {
+		NcAtt * att = var->get_att(a);
+		std::string strAttName = att->name();
+		if (strAttName == "units") {
+			continue;
+		}
+
+		// Define new value of this attribute
+		if (!fCheckConsistency) {
+			if ((strAttName == "missing_value") ||
+			    (strAttName == "comments") ||
+			    (strAttName == "long_name") ||
+			    (strAttName == "grid_name") ||
+			    (strAttName == "grid_type")
+			) {
+				m_mapKeyAttributes.insert(
+					AttributeMap::value_type(
+						strAttName, att->as_string(0)));
+			} else {
+				m_mapOtherAttributes.insert(
+					AttributeMap::value_type(
+						strAttName, att->as_string(0)));
+			}
+
+		// Check for consistency across files
+		} else {
+			AttributeMap::const_iterator iterAttKey =
+				m_mapKeyAttributes.find(strAttName);
+			AttributeMap::const_iterator iterAttOther =
+				m_mapOtherAttributes.find(strAttName);
+
+			if (iterAttKey != m_mapKeyAttributes.end()) {
+				if (iterAttKey->second != att->as_string(0)) {
+					return std::string("ERROR: Variable \"") + strName
+						+ std::string("\" has inconsistent value of \"")
+						+ strAttName + std::string("\" across files");
+				}
+			}
+			if (iterAttOther != m_mapOtherAttributes.end()) {
+				if (iterAttOther->second != att->as_string(0)) {
+					return std::string("ERROR: Variable \"") + strName
+						+ std::string("\" has inconsistent value of \"")
+						+ strAttName + std::string("\" across files");
+				}
+			}
+			if ((iterAttKey == m_mapKeyAttributes.end()) &&
+			    (iterAttOther == m_mapOtherAttributes.end())
+			) {
+				return std::string("ERROR: Variable \"") + strName
+					+ std::string("\" has inconsistent appearance of attribute \"")
+					+ strAttName + std::string("\" across files");
+			}
+		}
+	}
+
+	return std::string("");
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // FileListObjectConstructor
@@ -95,6 +262,9 @@ const long FileListObject::InconsistentDimensionSizes = (-1);
 FileListObject::~FileListObject() {
 	for (int v = 0; v < m_vecVariableInfo.size(); v++) {
 		delete m_vecVariableInfo[v];
+	}
+	for (int d = 0; d < m_vecDimensionInfo.size(); d++) {
+		delete m_vecDimensionInfo[d];
 	}
 }
 
@@ -516,7 +686,7 @@ std::string FileListObject::LoadData_float(
 	// Find the VariableInfo structure for this Variable
 	size_t iVarInfo = 0;
 	for (; iVarInfo < m_vecVariableInfo.size(); iVarInfo++) {
-		if (strVariableName == m_vecVariableInfo[iVarInfo]->m_strVariableName) {
+		if (strVariableName == m_vecVariableInfo[iVarInfo]->m_strName) {
 			break;
 		}
 	}
@@ -632,7 +802,7 @@ std::string FileListObject::LoadData_float(
 
 	// Load the data
 /*
-	std::cout << varinfo.m_strVariableName << std::endl;
+	std::cout << varinfo.m_strName << std::endl;
 		for (int d = 0; d < vecAuxIndices.size(); d++) {
 			printf("%s %i\n", varinfo.m_vecDimNames[d].c_str(), vecAuxIndices[d]);
 		}
@@ -671,7 +841,7 @@ std::string FileListObject::WriteData_float(
 	// Find the VariableInfo structure for this Variable
 	size_t iVarInfo = 0;
 	for (; iVarInfo < m_vecVariableInfo.size(); iVarInfo++) {
-		if (strVariableName == m_vecVariableInfo[iVarInfo]->m_strVariableName) {
+		if (strVariableName == m_vecVariableInfo[iVarInfo]->m_strName) {
 			break;
 		}
 	}
@@ -906,7 +1076,7 @@ std::string FileListObject::AddVariableFromTemplate(
 
 	// Check if variable already exists
 	for (int v = 0; v < m_vecVariableInfo.size(); v++) {
-		if (m_vecVariableInfo[v]->m_strVariableName == pvar->Name()) {
+		if (m_vecVariableInfo[v]->m_strName == pvar->Name()) {
 			return std::string("ERROR: Variable already exists in file_list");
 		}
 	}
@@ -1068,7 +1238,7 @@ std::string FileListObject::AddVariableFromTemplateWithNewVerticalDim(
 
 	// Check if variable already exists
 	for (int v = 0; v < m_vecVariableInfo.size(); v++) {
-		if (m_vecVariableInfo[v]->m_strVariableName == pvar->Name()) {
+		if (m_vecVariableInfo[v]->m_strName == pvar->Name()) {
 			return std::string("ERROR: Variable already exists in file_list");
 		}
 	}
@@ -1188,7 +1358,7 @@ std::string FileListObject::AddVariableFromTemplateWithNewVerticalDim(
 
 	if (!fHasVertical) {
 		return std::string("ERROR: Variable \"") + Name()
-			+ std::string("[") + pvarinfo->m_strVariableName
+			+ std::string("[") + pvarinfo->m_strName
 			+ std::string("]\" has no vertical dimension");
 	}
 	if (!fHasRecord) {
@@ -1443,6 +1613,13 @@ std::string FileListObject::IndexVariableData(
 	size_t sFileIxBegin,
 	size_t sFileIxEnd
 ) {
+	std::string strError;
+
+	// Check if we're appending to an already populated FileListObject
+	bool fAppendIndex =
+		(m_vecVariableInfo.size() != 0) ||
+		(m_vecDimensionInfo.size() != 0);
+
 	// Open all files
 	if (sFileIxBegin == InvalidFileIx) {
 		sFileIxBegin = 0;
@@ -1462,6 +1639,12 @@ std::string FileListObject::IndexVariableData(
 		}
 
 		printf("Indexing %s\n", strFullFilename.c_str());
+
+		// Load in global attributes
+		strError = m_datainfo.FromNcFile(&ncFile, fAppendIndex, strFullFilename);
+		if (strError != "") {
+			return strError;
+		}
 
 		// time indices stored in this file
 		std::vector<size_t> vecFileTimeIndices;
@@ -1560,9 +1743,10 @@ std::string FileListObject::IndexVariableData(
 			}
 		}
 
-		printf("File contains %lu times\n", vecFileTimeIndices.size());
+		printf("..File contains %lu times\n", vecFileTimeIndices.size());
 
-		// Loop over all Dimensions
+		// Index all Dimensions
+		printf("..Loading dimensions\n");
 		const int nDims = ncFile.num_dims();
 		for (int d = 0; d < nDims; d++) {
 			NcDim * dim = ncFile.get_dim(d);
@@ -1570,11 +1754,55 @@ std::string FileListObject::IndexVariableData(
 			DimensionInfoMap::iterator iterDim =
 				m_mapDimensionInfo.find(strDimName);
 
-			if (iterDim == m_mapDimensionInfo.end()) {
-				DimensionInfo diminfo(strDimName);
-				diminfo.m_lSize = dim->size();
-				diminfo.m_eType = DimensionInfo::Type_Auxiliary;
+			//printf("....Dimension %i (%s)\n", d, strDimName.c_str());
 
+			// New variable, not yet indexed
+			bool fNewDimension = false;
+
+			// Find the corresponding DimensionInfo structure
+			size_t sDimIndex = 0;
+			for (; sDimIndex < m_vecDimensionInfo.size(); sDimIndex++) {
+				if (strDimName == m_vecDimensionInfo[sDimIndex]->m_strName) {
+					break;
+				}
+			}
+			if (sDimIndex == m_vecDimensionInfo.size()) {
+				m_vecDimensionInfo.push_back(
+					new DimensionInfo(strDimName));
+
+				fNewDimension = true;
+			}
+
+			DimensionInfo & diminfo = *(m_vecDimensionInfo[sDimIndex]);
+
+			// Check for variable
+			NcVar * varDim = ncFile.get_var(strDimName.c_str());
+
+			// Load values
+			if (varDim != NULL) {
+				if (varDim->num_dims() != 1) {
+					return std::string("ERROR: Dimension variable \"")
+						+ varDim->name()
+						+ std::string("\" must have exactly 1 dimension");
+				}
+				if (std::string(varDim->get_dim(0)->name()) != strDimName) {
+					return std::string("ERROR: Dimension variable \"")
+						+ varDim->name()
+						+ std::string("\" does not have dimension \"");
+						+ varDim->name()
+						+ std::string("\"");
+				}
+
+				// Initialize the DataObjectInfo from the NcVar
+				diminfo.FromNcVar(varDim, !fNewDimension);
+
+				// Get the values from the dimension
+				if (fNewDimension) {
+					diminfo.m_dValues.resize(diminfo.m_lSize);
+					varDim->set_cur((long)0);
+					varDim->get(&(diminfo.m_dValues[0]), diminfo.m_lSize);
+				}
+/*
 				// Dimension is of type vertical
 				if ((strDimName == "lev") ||
 					(strDimName == "pres") ||
@@ -1586,22 +1814,7 @@ std::string FileListObject::IndexVariableData(
 					// Determine order of dimension
 
 					// Find the variable associated with this dimension
-					NcVar * varDim = ncFile.get_var(strDimName.c_str());
 					if (varDim != NULL) {
-						if (varDim->num_dims() != 1) {
-							_EXCEPTIONT("Dimension variable must have at most 1 dimension");
-						}
-
-						// Check for presence of "units" attribute
-						NcAtt * attUnits = varDim->get_att("units");
-						if (attUnits != NULL) {
-							diminfo.m_strUnits = attUnits->as_string(0);
-						}
-
-						// Load values
-						diminfo.m_dValues.resize(diminfo.m_lSize);
-						varDim->set_cur((long)0);
-						varDim->get(&(diminfo.m_dValues[0]), diminfo.m_lSize);
 
 						// Check for presence of "positive" attribute
 						NcAtt * attPositive = varDim->get_att("positive");
@@ -1660,10 +1873,12 @@ std::string FileListObject::IndexVariableData(
 
 			} else if (iterDim->second.m_lSize != dim->size()) {
 				_EXCEPTIONT("Inconsistent dimension sizes");
+*/
 			}
 		}
 
 		// Loop over all Variables
+		printf("..Loading variables\n");
 		const int nVariables = ncFile.num_vars();
 		for (int v = 0; v < nVariables; v++) {
 			NcVar * var = ncFile.get_var(v);
@@ -1674,11 +1889,19 @@ std::string FileListObject::IndexVariableData(
 
 			std::string strVariableName = var->name();
 
-			if (strVariableName == m_strRecordDimName) {
+			// Don't index dimension variables
+			bool fDimensionVar = false;
+			for (int d = 0; d < m_vecDimensionInfo.size(); d++) {
+				if (m_vecDimensionInfo[d]->m_strName == strVariableName) {
+					fDimensionVar = true;
+					break;
+				}
+			}
+			if (fDimensionVar) {
 				continue;
 			}
 
-			//printf("Variable %s\n", strVariableName.c_str());
+			//printf("....Variable %i (%s)\n", v, strVariableName.c_str());
 
 			// New variable, not yet indexed
 			bool fNewVariable = false;
@@ -1686,7 +1909,7 @@ std::string FileListObject::IndexVariableData(
 			// Find the corresponding VariableInfo structure
 			size_t sVarIndex = 0;
 			for (; sVarIndex < m_vecVariableInfo.size(); sVarIndex++) {
-				if (strVariableName == m_vecVariableInfo[sVarIndex]->m_strVariableName) {
+				if (strVariableName == m_vecVariableInfo[sVarIndex]->m_strName) {
 					break;
 				}
 			}
@@ -1699,30 +1922,8 @@ std::string FileListObject::IndexVariableData(
 
 			VariableInfo & info = *(m_vecVariableInfo[sVarIndex]);
 
-			// Get units, if available
-			NcAtt * attUnits = var->get_att("units");
-			if (attUnits != NULL) {
-				std::string strUnits = attUnits->as_string(0);
-				if (strUnits != "") {
-					if ((info.m_strUnits != "") && (strUnits != info.m_strUnits)) {
-						return std::string("ERROR: Variable \"") + strVariableName
-							+ std::string("\" has inconsistent units across files");
-					}
-					if (info.m_strUnits == "") {
-						info.m_strUnits = strUnits;
-					}
-				}
-			}
-
-			// Get type, if available
-			NcType nctype = var->type();
-			if ((!fNewVariable) && (nctype != info.m_nctype)) {
-				return std::string("ERROR: Variable \"") + strVariableName
-					+ std::string("\" has inconsistent type across files");
-			}
-			if (fNewVariable) {
-				info.m_nctype = nctype;
-			}
+			// Initialize the DataObjectInfo from the NcVar
+			info.FromNcVar(var, !fNewVariable);
 
 			// Load dimension information
 			const int nDims = var->num_dims();
@@ -1759,13 +1960,13 @@ std::string FileListObject::IndexVariableData(
 					if (info.m_iVerticalDimIx != (-1)) {
 						if (info.m_iVerticalDimIx != d) {
 							return std::string("ERROR: Possibly multiple vertical dimensions in variable ")
-								+ info.m_strVariableName;
+								+ info.m_strName;
 						}
 					}
 					info.m_iVerticalDimIx = d;
 				}
 			}
-
+/*
 			// Determine direction of vertical dimension
 			if (info.m_iVerticalDimIx != (-1)) {
 				DimensionInfoMap::iterator iterDimInfo =
@@ -1778,7 +1979,7 @@ std::string FileListObject::IndexVariableData(
 					_EXCEPTIONT("Logic error");
 				}
 			}
-
+*/
 			// No time information on this Variable
 			if (info.m_iTimeDimIx == (-1)) {
 				if (info.m_mapTimeFile.size() == 0) {
@@ -1895,7 +2096,7 @@ std::string FileListObject::OutputTimeVariableIndexCSV(
 	// Output variables across header
 	ofOutput << "time";
 	for (int v = 0; v < m_vecVariableInfo.size(); v++) {
-		ofOutput << "," << m_vecVariableInfo[v]->m_strVariableName;
+		ofOutput << "," << m_vecVariableInfo[v]->m_strName;
 	}
 	ofOutput << std::endl;
 
@@ -1958,38 +2159,110 @@ std::string FileListObject::OutputTimeVariableIndexXML(
 			"xml version=\"1.0\" encoding=\"\""));
 
 	// DOCTYPE
-	tinyxml2::XMLElement * pdoctype = xmlDoc.NewElement("!DOCTYPE");
-	pdoctype->SetAttribute("dataset", "");
+	tinyxml2::XMLUnknown * pdoctype = xmlDoc.NewUnknown("DOCTYPE dataset SYSTEM \"http://www-pcmdi.llnl.gov/software/cdms/cdml.dtd\"");
 	xmlDoc.InsertEndChild(pdoctype);
 
 	// Dataset 
-	tinyxml2::XMLNode * pdata = xmlDoc.NewElement("dataset");
+	tinyxml2::XMLElement * pdata = xmlDoc.NewElement("dataset");
+	{
+		AttributeMap::const_iterator iterAttKey =
+			m_datainfo.m_mapKeyAttributes.begin();
+		for (; iterAttKey != m_datainfo.m_mapKeyAttributes.end(); iterAttKey++) {
+			pdata->SetAttribute(iterAttKey->first.c_str(), iterAttKey->second.c_str());
+		}
+
+		AttributeMap::const_iterator iterAttOther =
+			m_datainfo.m_mapOtherAttributes.begin();
+		for (; iterAttOther != m_datainfo.m_mapOtherAttributes.end(); iterAttOther++) {
+			tinyxml2::XMLElement * pattr = xmlDoc.NewElement("attr");
+			pattr->SetAttribute("name", iterAttOther->first.c_str());
+			pattr->SetAttribute("datatype", "String");
+			pattr->SetText(iterAttOther->second.c_str());
+			pdata->InsertEndChild(pattr);
+		}
+	}
 	xmlDoc.InsertEndChild(pdata);
 
 	// Output dimensions
-	DimensionInfoMap::const_iterator iter = m_mapDimensionInfo.begin();
-	for (; iter != m_mapDimensionInfo.end(); iter++) {
+	for (int d = 0; d < m_vecDimensionInfo.size(); d++) {
+		const DimensionInfo * pdiminfo = m_vecDimensionInfo[d];
+
 		tinyxml2::XMLElement * pdim = xmlDoc.NewElement("axis");
-		pdim->SetAttribute("id", iter->second.m_strName.c_str());
-		pdim->SetAttribute("units", iter->second.m_strUnits.c_str());
-		pdim->SetAttribute("length", (int64_t)iter->second.m_lSize);
+		pdim->SetAttribute("id", pdiminfo->m_strName.c_str());
+		pdim->SetAttribute("units", pdiminfo->m_strUnits.c_str());
+		pdim->SetAttribute("length", (int64_t)pdiminfo->m_lSize);
+		pdim->SetAttribute("datatype", NcTypeToString(pdiminfo->m_nctype).c_str());
+
+		AttributeMap::const_iterator iterAttKey =
+			pdiminfo->m_mapKeyAttributes.begin();
+		for (; iterAttKey != pdiminfo->m_mapKeyAttributes.end(); iterAttKey++) {
+			pdim->SetAttribute(iterAttKey->first.c_str(), iterAttKey->second.c_str());
+		}
+
+		AttributeMap::const_iterator iterAttOther =
+			pdiminfo->m_mapOtherAttributes.begin();
+		for (; iterAttOther != pdiminfo->m_mapOtherAttributes.end(); iterAttOther++) {
+			tinyxml2::XMLElement * pattr = xmlDoc.NewElement("attr");
+			pattr->SetAttribute("name", iterAttOther->first.c_str());
+			pattr->SetAttribute("datatype", "String");
+			pattr->SetText(iterAttOther->second.c_str());
+			pdim->InsertEndChild(pattr);
+		}
+
+		if (pdiminfo->m_dValues.size() != 0) {
+			//tinyxml2::XMLElement * ptopo = xmlDoc.NewElement("attr");
+			//ptopo->SetAttribute("datatype", "String");
+			//ptopo->SetAttribute("name", "realtopology");
+			std::ostringstream ssText;
+			ssText << std::setprecision(17);
+			ssText << "[";
+			for (int i = 0; i < pdiminfo->m_dValues.size(); i++) {
+				ssText << pdiminfo->m_dValues[i];
+				if (i != pdiminfo->m_dValues.size()-1) {
+					ssText << " ";
+				}
+			}
+			ssText << "]";
+			pdim->SetText(ssText.str().c_str());
+		}
+
 		pdata->InsertEndChild(pdim);
 	}
 
 	// Output variables
 	for (int v = 0; v < m_vecVariableInfo.size(); v++) {
+		const VariableInfo * pvarinfo = m_vecVariableInfo[v];
+
 		tinyxml2::XMLElement * pvar = xmlDoc.NewElement("variable");
-		pvar->SetAttribute("id", m_vecVariableInfo[v]->m_strVariableName.c_str());
-		pvar->SetAttribute("datatype", NcTypeToString(m_vecVariableInfo[v]->m_nctype).c_str());
-		pvar->SetAttribute("units", m_vecVariableInfo[v]->m_strUnits.c_str());
+		pvar->SetAttribute("id", pvarinfo->m_strName.c_str());
+		pvar->SetAttribute("datatype", NcTypeToString(pvarinfo->m_nctype).c_str());
+		pvar->SetAttribute("units", pvarinfo->m_strUnits.c_str());
 
-		tinyxml2::XMLElement * pvardom = xmlDoc.NewElement("domain");
-		pvar->InsertEndChild(pvardom);
+		AttributeMap::const_iterator iterAttKey =
+			pvarinfo->m_mapKeyAttributes.begin();
+		for (; iterAttKey != pvarinfo->m_mapKeyAttributes.end(); iterAttKey++) {
+			pvar->SetAttribute(iterAttKey->first.c_str(), iterAttKey->second.c_str());
+		}
 
-		for (int d = 0; d < m_vecVariableInfo[v]->m_vecDimNames.size(); d++) {
-			tinyxml2::XMLElement * pvardomelem = xmlDoc.NewElement("domElem");
-			pvardomelem->SetAttribute("name", m_vecVariableInfo[v]->m_vecDimNames[d].c_str());
-			pvardom->InsertEndChild(pvardomelem);
+		AttributeMap::const_iterator iterAttOther =
+			pvarinfo->m_mapOtherAttributes.begin();
+		for (; iterAttOther != pvarinfo->m_mapOtherAttributes.end(); iterAttOther++) {
+			tinyxml2::XMLElement * pattr = xmlDoc.NewElement("attr");
+			pattr->SetAttribute("name", iterAttOther->first.c_str());
+			pattr->SetAttribute("datatype", "String");
+			pattr->SetText(iterAttOther->second.c_str());
+			pvar->InsertEndChild(pattr);
+		}
+
+		if (m_vecVariableInfo[v]->m_vecDimNames.size() != 0) {
+			tinyxml2::XMLElement * pvardom = xmlDoc.NewElement("domain");
+			pvar->InsertEndChild(pvardom);
+
+			for (int d = 0; d < m_vecVariableInfo[v]->m_vecDimNames.size(); d++) {
+				tinyxml2::XMLElement * pvardomelem = xmlDoc.NewElement("domElem");
+				pvardomelem->SetAttribute("name", pvarinfo->m_vecDimNames[d].c_str());
+				pvardom->InsertEndChild(pvardomelem);
+			}
 		}
 
 		pdata->InsertEndChild(pvar);
