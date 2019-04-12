@@ -2295,6 +2295,8 @@ std::string FileListObject::OutputTimeVariableIndexXML(
 			for (int d = 0; d < m_vecVariableInfo[v]->m_vecDimNames.size(); d++) {
 				tinyxml2::XMLElement * pvardomelem = xmlDoc.NewElement("domElem");
 				pvardomelem->SetAttribute("name", pvarinfo->m_vecDimNames[d].c_str());
+				pvardomelem->SetAttribute("start", "0");
+				pvardomelem->SetAttribute("length", (int64_t)pvarinfo->m_vecDimSizes[d]);
 				pvardom->InsertEndChild(pvardomelem);
 			}
 		}
